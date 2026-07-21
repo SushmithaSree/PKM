@@ -29,6 +29,9 @@ function ShapeNodeImpl({ id, data, selected }: NodeProps<ShapeNodeType>) {
   useEffect(() => { if (editing) { setDraft(data.text); taRef.current?.focus(); } }, [editing]); // eslint-disable-line
 
   const filled = style.filled ?? false;
+  const fillColor = style.fillColor ?? style.color;
+  const strokeColor = style.strokeColor ?? style.color;
+  const strokeWidth = style.strokeWidth ?? 2.5;
   const shape = style.shape;
   const { w, h } = data;
   const anchors = handleAnchors(shape);
@@ -81,16 +84,16 @@ function ShapeNodeImpl({ id, data, selected }: NodeProps<ShapeNodeType>) {
       <div style={{
         position: "absolute", inset: 0,
         clipPath: clipPolygon(shape),
-        background: filled ? style.color : "var(--surface)",
+        background: filled ? fillColor : "var(--surface)",
       }} />
       <svg viewBox="0 0 100 100" preserveAspectRatio="none"
            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}>
         {shape === "circle"
-          ? <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke={filled ? "none" : style.color}
-              strokeWidth={2.5} vectorEffect="non-scaling-stroke"
+          ? <ellipse cx="50" cy="50" rx="49" ry="49" fill="none" stroke={strokeColor}
+              strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke"
               strokeDasharray={style.dashed ? "6 4" : undefined} />
-          : <polygon points={svgPoints(shape)} fill="none" stroke={filled ? "none" : style.color}
-              strokeWidth={2.5} vectorEffect="non-scaling-stroke" strokeLinejoin="round"
+          : <polygon points={svgPoints(shape)} fill="none" stroke={strokeColor}
+              strokeWidth={strokeWidth} vectorEffect="non-scaling-stroke" strokeLinejoin="round"
               strokeDasharray={style.dashed ? "6 4" : undefined} />}
       </svg>
 

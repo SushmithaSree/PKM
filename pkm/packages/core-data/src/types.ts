@@ -83,7 +83,16 @@ export const DIRECTIONAL_RELATIONS: ReadonlySet<string> = new Set([
   "causes", "leads_to", "example_of", "part_of",
 ]);
 
-export interface TypeStyle { shape: ShapeId; color: string; label: string; filled?: boolean; dashed?: boolean }
+export interface TypeStyle {
+  shape: ShapeId;
+  color: string; // legacy primary color — fallback for fillColor/strokeColor when unset (back-compat with saved taxonomies)
+  label: string;
+  filled?: boolean;
+  fillColor?: string; // used when filled; falls back to `color`
+  strokeColor?: string; // outline color; falls back to `color`
+  strokeWidth?: number; // outline thickness in px; falls back to 2.5
+  dashed?: boolean; // outline style: solid (false/undefined) vs dashed (true)
+}
 
 export interface TaxonomyConfig {
   id: "default";
