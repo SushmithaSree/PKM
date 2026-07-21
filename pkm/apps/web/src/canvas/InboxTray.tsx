@@ -1,24 +1,34 @@
 import { useEffect, useState } from "react";
 import { repository, type Entry } from "@pkm/core-data";
+import { NAV_CLEARANCE } from "../components/Nav";
 
 // M3 bridge: collapsible tray of unprocessed captures docked on the canvas.
 // Drag an entry onto the canvas → Transient node with a backlink (handled in Board).
 const ICON: Record<Entry["type"], string> = { text: "✏️", voice: "🎙", image: "🖼", link: "🔗" };
 
-export default function InboxTray({ refreshKey }: { refreshKey: number }) {
+// Fixed px widths (not vw) so the top toolbar in Board.tsx can reliably
+// reserve exactly this much space and never collide with the tray.
+export const TRAY_COLLAPSED_W = 44;
+export const TRAY_OPEN_W_COMPACT = 180; // narrow screens
+export const TRAY_OPEN_W = 240; // normal screens
+
+export default function InboxTray({ refreshKey, open, onToggle, compact }: {
+  refreshKey: number; open: boolean; onToggle: () => void; compact: boolean;
+}) {
   const [entries, setEntries] = useState<Entry[]>([]);
-  const [open, setOpen] = useState(true);
 
   useEffect(() => { repository.listInbox().then(setEntries); }, [refreshKey]);
 
+  const openWidth = compact ? TRAY_OPEN_W_COMPACT : TRAY_OPEN_W;
+
   return (
     <div style={{
-      position: "absolute", right: 16, top: 16, bottom: 92, zIndex: 10,
-      width: open ? 240 : 44, transition: "width .15s",
+      position: "absolute", right: 16, top: 16, bottom: `calc(${NAV_CLEARANCE} + 16px)`, zIndex: 10,
+      width: open ? openWidth : TRAY_COLLAPSED_W, transition: "width .15s",
       background: "var(--surface)", borderRadius: 16, boxShadow: "var(--shadow-float)",
       display: "flex", flexDirection: "column", overflow: "hidden",
     }}>
-      <button onClick={() => setOpen(o => !o)} style={{
+      <button onClick={onToggle} style={{
         border: "none", background: "transparent", cursor: "pointer", padding: 12,
         display: "flex", alignItems: "center", gap: 8, color: "var(--ink)",
         fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600,

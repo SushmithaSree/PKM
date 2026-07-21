@@ -1,6 +1,10 @@
 import { NavLink } from "react-router-dom";
 
 // Fix #5: fixed navigation, always available, same place on every screen.
+// Shared clearance other fixed-bottom UI (Capture's action bar, Board's
+// InboxTray/Controls/MiniMap) stacks above so nothing overlaps the nav pill,
+// regardless of screen size.
+export const NAV_CLEARANCE = "72px";
 const items = [
   { to: "/capture", label: "✏️", name: "Capture" },
   { to: "/inbox", label: "📥", name: "Inbox" },

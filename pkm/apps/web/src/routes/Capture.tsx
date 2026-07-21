@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { repository, type Attachment, type EntryType } from "@pkm/core-data";
 import VoiceRecorder from "../components/VoiceRecorder";
+import { NAV_CLEARANCE } from "../components/Nav";
+
+const ACTION_BAR_BOTTOM = `calc(max(16px, env(safe-area-inset-bottom)) + ${NAV_CLEARANCE})`;
 
 const DRAFT_KEY = "pkm.capture.draft";
 const URL_RE = /^https?:\/\/\S+$/i;
@@ -86,7 +89,7 @@ export default function Capture() {
           background: "var(--bg-paper)", color: "var(--ink)",
           fontFamily: "var(--font-capture)", fontSize: "clamp(17px, 2.4vw, 19px)", lineHeight: 1.7,
           padding: "clamp(24px, 6vh, 48px) clamp(20px, 12vw, 96px)",
-          paddingBottom: 140,
+          paddingBottom: `calc(140px + ${NAV_CLEARANCE})`,
         }}
       />
       <input ref={photoInput} type="file" accept="image/*" capture="environment"
@@ -95,8 +98,8 @@ export default function Capture() {
       {/* Attachments live with the note until you save */}
       {pending.length > 0 && (
         <div style={{
-          position: "fixed", bottom: "calc(max(16px, env(safe-area-inset-bottom)) + 72px)",
-          left: 16, display: "flex", gap: 8, zIndex: 100, flexWrap: "wrap", maxWidth: "70vw",
+          position: "fixed", bottom: `calc(${ACTION_BAR_BOTTOM} + 64px)`,
+          left: 16, right: 16, display: "flex", gap: 8, zIndex: 100, flexWrap: "wrap",
         }}>
           {pending.map(p => (
             <div key={p.assetId} style={{
@@ -117,7 +120,7 @@ export default function Capture() {
       )}
 
       <div style={{
-        position: "fixed", bottom: "max(16px, env(safe-area-inset-bottom))", left: 16,
+        position: "fixed", bottom: ACTION_BAR_BOTTOM, left: 16,
         display: "flex", gap: 8, zIndex: 100, alignItems: "center",
         background: "var(--surface)", borderRadius: 999, boxShadow: "var(--shadow-float)", padding: 6,
       }}>

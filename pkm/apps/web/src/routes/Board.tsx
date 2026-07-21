@@ -14,8 +14,9 @@ import { ShapeNode, type ShapeNodeType } from "../canvas/ShapeNode";
 import { DEFAULT_SIZE, SHAPE_GLYPH } from "../canvas/shapeGeometry";
 import RelationEdge, { type RelationEdgeData } from "../canvas/RelationEdge";
 import NodeToolbar from "../canvas/NodeToolbar";
-import InboxTray from "../canvas/InboxTray";
+import InboxTray, { TRAY_COLLAPSED_W, TRAY_OPEN_W, TRAY_OPEN_W_COMPACT } from "../canvas/InboxTray";
 import BacklinkPopover from "../canvas/BacklinkPopover";
+import { NAV_CLEARANCE } from "../components/Nav";
 
 const nodeTypes = { shape: ShapeNode };
 const edgeTypes = { relation: RelationEdge };
@@ -39,6 +40,23 @@ function Canvas() {
   const [bg, setBg] = useState<BackgroundStyle>("dotted");
   const [bgMenu, setBgMenu] = useState(false);
   const now = Date.now();
+
+  // Narrow-viewport flag — the MiniMap eats too much precious space on a
+  // phone screen, so it's dropped below this width; Controls stays (zoom is
+  // essential everywhere).
+  const [isNarrow, setIsNarrow] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const onResize = () => setIsNarrow(window.innerWidth < 640);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  // Tray open state lives here (not inside InboxTray) so the top toolbar can
+  // reserve exactly the space the tray currently occupies and never collide
+  // with it. Defaults closed on narrow screens — an open 240px-wide tray
+  // covering most of a phone screen on first load is a bad default there.
+  const [trayOpen, setTrayOpen] = useState(() => window.innerWidth >= 640);
+  const trayWidth = trayOpen ? (isNarrow ? TRAY_OPEN_W_COMPACT : TRAY_OPEN_W) : TRAY_COLLAPSED_W;
 
   useEffect(() => { repository.getTaxonomy().then(setTax); }, []);
   useEffect(() => { repository.getBoard(boardId).then(b => b && setBg(b.background)); }, [boardId]);
@@ -264,14 +282,15 @@ function Canvas() {
       }}
     >
       {palette}
-      <InboxTray refreshKey={trayKey} />
+      <InboxTray refreshKey={trayKey} open={trayOpen} onToggle={() => setTrayOpen(o => !o)} compact={isNarrow} />
 
       {/* top toolbar: flex row so items never overlap regardless of label width.
           left+right together force this box to span the gap between them for
           layout purposes — pointer-events:none stops that invisible span from
-          swallowing clicks meant for things behind it (e.g. the Inbox tray
-          toggle), re-enabled per-child below. */}
-      <div style={{ position: "absolute", top: 16, left: 80, right: 16, zIndex: 10, display: "flex", gap: 8, flexWrap: "wrap", pointerEvents: "none" }}>
+          swallowing clicks meant for things behind it, re-enabled per-child
+          below. right is set to clear the tray's ACTUAL current width (it
+          reports its own state up) so the two never visually collide. */}
+      <div style={{ position: "absolute", top: 16, left: 16, right: trayWidth + 32, zIndex: 10, display: "flex", gap: 8, flexWrap: "wrap", pointerEvents: "none" }}>
         {/* background switcher */}
         <div style={{ position: "relative", pointerEvents: "auto" }}>
           <button onClick={() => setBgMenu(m => !m)} style={{
@@ -298,15 +317,15 @@ function Canvas() {
           boxShadow: "var(--shadow-float)", fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--ink)",
           whiteSpace: "nowrap", pointerEvents: "auto",
         }}>⚙ Node types</Link>
-      </div>
 
-      {focusId && (
-        <button onClick={() => setFocusId(null)} style={{
-          position: "absolute", top: 16, right: 272, zIndex: 20, background: "var(--accent)", color: "#fff",
-          border: "none", borderRadius: 999, padding: "8px 16px", cursor: "pointer",
-          fontFamily: "var(--font-ui)", fontSize: 13, boxShadow: "var(--shadow-float)",
-        }}>Exit focus ✕</button>
-      )}
+        {focusId && (
+          <button onClick={() => setFocusId(null)} style={{
+            background: "var(--accent)", color: "#fff", border: "none", borderRadius: 999,
+            padding: "8px 16px", cursor: "pointer", fontFamily: "var(--font-ui)", fontSize: 13,
+            boxShadow: "var(--shadow-float)", whiteSpace: "nowrap", pointerEvents: "auto",
+          }}>Exit focus ✕</button>
+        )}
+      </div>
 
       <ReactFlow
         nodes={displayNodes} edges={displayEdges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
@@ -320,8 +339,8 @@ function Canvas() {
         fitView style={{ background: "var(--bg-paper)" }}
       >
         {variant && <Background variant={variant} color="#C9C1B2" size={variant === BackgroundVariant.Dots ? 2.2 : 1} gap={26} />}
-        <MiniMap pannable zoomable style={{ bottom: 76 }} />
-        <Controls style={{ bottom: 76 }} />
+        {!isNarrow && <MiniMap pannable zoomable style={{ bottom: `calc(${NAV_CLEARANCE} + 8px)` }} />}
+        <Controls style={{ bottom: `calc(${NAV_CLEARANCE} + 8px)` }} />
       </ReactFlow>
 
       {selectedNode && toolbarPos && !focusId && (
