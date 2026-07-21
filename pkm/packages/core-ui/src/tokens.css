@@ -1,0 +1,29 @@
+/* Paper & Ink — finalized theme (spec v0.3 §2.5)
+   Dark mode deferred to v1.1: swap this palette block only. */
+:root {
+  --bg-paper: #FAF7F2;
+  --canvas-dot: #D8D2C8;
+  --ink: #2A2724;
+  --ink-muted: #8A8378;
+  --surface: #FFFFFF;
+  --accent: #C4553B;
+
+  --node-anchor: #5B7DB1;
+  --node-insight: #D9A441;
+  --node-fact: #6E6A63;
+  --node-inquiry: #8B6BAE;
+  --node-transient: #A39D92;
+  --edge-contradicts: #E24B4A;
+
+  --radius: 10px;
+  --shadow-float: 0 4px 16px rgba(42, 39, 36, 0.10);
+
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-capture: "Lora", Georgia, serif;
+}
+html, body, #root { margin: 0; height: 100%; }
+body {
+  background: var(--bg-paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+}
