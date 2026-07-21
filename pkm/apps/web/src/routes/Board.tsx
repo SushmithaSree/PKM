@@ -31,7 +31,6 @@ function Canvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState<ShapeNodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const { screenToFlowPosition, flowToScreenPosition, fitView, getNodes } = useReactFlow();
-  const dragType = useRef<NodeType | null>(null);
   const [tax, setTax] = useState<TaxonomyConfig>(DEFAULT_TAXONOMY);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -181,6 +180,46 @@ function Canvas() {
     setTrayKey(k => k + 1);
   }, [addNodeAt]);
 
+  // Pointer-based drag for the shape palette and inbox-tray-to-canvas. Native
+  // HTML5 draggable/dragstart/drop (the old implementation) isn't supported
+  // by touch input at all, so it silently did nothing on mobile. Pointer
+  // events unify mouse/touch/pen, so this one implementation covers both.
+  type DragPayload =
+    | { kind: "shape"; nodeType: NodeType; glyph: string; label: string }
+    | { kind: "entry"; entryId: string; label: string };
+  const dragRef = useRef<{ payload: DragPayload; startX: number; startY: number; moved: boolean } | null>(null);
+  const [dragPreview, setDragPreview] = useState<{ payload: DragPayload; x: number; y: number } | null>(null);
+
+  const beginDrag = useCallback((payload: DragPayload, x: number, y: number) => {
+    dragRef.current = { payload, startX: x, startY: y, moved: false };
+    setDragPreview({ payload, x, y });
+  }, []);
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const d = dragRef.current;
+      if (!d) return;
+      if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6) d.moved = true;
+      setDragPreview({ payload: d.payload, x: e.clientX, y: e.clientY });
+    }
+    function onUp(e: PointerEvent) {
+      const d = dragRef.current;
+      dragRef.current = null;
+      setDragPreview(null);
+      if (!d || !d.moved) return;
+      if (d.payload.kind === "shape") addNodeAt(d.payload.nodeType, e.clientX, e.clientY);
+      else onDropEntry(d.payload.entryId, e.clientX, e.clientY);
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [addNodeAt, onDropEntry]);
+
   const reclassify = useCallback((nodeId: string, t: NodeType) => {
     setNodes(ns => ns.map(n => { if (n.id !== nodeId) return n; const next = { ...n, data: { ...n.data, nodeType: t, style: styleFor(t) } }; persist(next); return next; }));
   }, [persist, setNodes, styleFor]);
@@ -258,31 +297,41 @@ function Canvas() {
       display: "flex", flexDirection: "column", gap: 4, padding: 8, maxHeight: "70vh", overflowY: "auto" }}>
       {Object.keys(tax.types).map(t => {
         const s = styleFor(t);
+        const glyph = SHAPE_GLYPH[s.shape];
         return (
-          <div key={t} draggable title={s.label}
-            onDragStart={() => { dragType.current = t; }}
+          <div key={t} title={s.label}
+            onPointerDown={e => { e.preventDefault(); beginDrag({ kind: "shape", nodeType: t, glyph, label: s.label }, e.clientX, e.clientY); }}
             style={{ width: "clamp(36px,6vw,48px)", height: "clamp(36px,6vw,48px)", display: "grid",
-              placeItems: "center", cursor: "grab", color: s.color, fontSize: "clamp(20px,3.5vw,26px)" }}>
-            {SHAPE_GLYPH[s.shape]}
+              placeItems: "center", cursor: "grab", color: s.color, fontSize: "clamp(20px,3.5vw,26px)",
+              touchAction: "pan-y", userSelect: "none" }}>
+            {glyph}
           </div>
         );
       })}
     </div>
-  ), [tax]);
+  ), [tax, beginDrag]);
 
   const variant = BG_VARIANT[bg];
 
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}
-      onDragOver={e => e.preventDefault()}
-      onDrop={e => {
-        const entryId = e.dataTransfer.getData("application/x-pkm-entry");
-        if (entryId) { onDropEntry(entryId, e.clientX, e.clientY); return; }
-        if (dragType.current) { addNodeAt(dragType.current, e.clientX, e.clientY); dragType.current = null; }
-      }}
-    >
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
       {palette}
-      <InboxTray refreshKey={trayKey} open={trayOpen} onToggle={() => setTrayOpen(o => !o)} compact={isNarrow} />
+      <InboxTray refreshKey={trayKey} open={trayOpen} onToggle={() => setTrayOpen(o => !o)} compact={isNarrow}
+        onEntryPointerDown={(entryId, label, x, y) => beginDrag({ kind: "entry", entryId, label }, x, y)} />
+
+      {dragPreview && (
+        <div style={{
+          position: "fixed", left: dragPreview.x, top: dragPreview.y, zIndex: 1000,
+          transform: "translate(-50%, -50%)", pointerEvents: "none",
+          display: "flex", alignItems: "center", gap: 6,
+          background: "var(--surface)", borderRadius: 999, padding: "6px 12px",
+          boxShadow: "var(--shadow-float)", fontFamily: "var(--font-ui)", fontSize: 13,
+          color: "var(--ink)", opacity: 0.92, whiteSpace: "nowrap",
+        }}>
+          <span>{dragPreview.payload.kind === "shape" ? dragPreview.payload.glyph : "📥"}</span>
+          <span>{dragPreview.payload.label}</span>
+        </div>
+      )}
 
       {/* top toolbar: flex row so items never overlap regardless of label width.
           left+right together force this box to span the gap between them for

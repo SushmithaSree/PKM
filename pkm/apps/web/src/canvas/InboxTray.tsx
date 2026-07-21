@@ -12,8 +12,9 @@ export const TRAY_COLLAPSED_W = 44;
 export const TRAY_OPEN_W_COMPACT = 180; // narrow screens
 export const TRAY_OPEN_W = 240; // normal screens
 
-export default function InboxTray({ refreshKey, open, onToggle, compact }: {
+export default function InboxTray({ refreshKey, open, onToggle, compact, onEntryPointerDown }: {
   refreshKey: number; open: boolean; onToggle: () => void; compact: boolean;
+  onEntryPointerDown: (entryId: string, label: string, x: number, y: number) => void;
 }) {
   const [entries, setEntries] = useState<Entry[]>([]);
 
@@ -61,19 +62,23 @@ export default function InboxTray({ refreshKey, open, onToggle, compact }: {
             Nothing to place. Captures appear here.
           </p>
         )}
-        {entries.map(e => (
-          <div key={e.id} draggable
-            onDragStart={ev => ev.dataTransfer.setData("application/x-pkm-entry", e.id)}
-            style={{
-              display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", marginBottom: 6,
-              background: "var(--bg-paper)", borderRadius: 8, cursor: "grab", fontSize: 13,
-            }}>
-            <span aria-hidden="true">{ICON[e.type]}</span>
-            <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {e.text || (e.type === "voice" ? "voice note" : e.type === "image" ? "image" : "(untitled)")}
-            </span>
-          </div>
-        ))}
+        {entries.map(e => {
+          const label = e.text || (e.type === "voice" ? "voice note" : e.type === "image" ? "image" : "(untitled)");
+          return (
+            <div key={e.id}
+              onPointerDown={ev => { ev.preventDefault(); onEntryPointerDown(e.id, label, ev.clientX, ev.clientY); }}
+              style={{
+                display: "flex", gap: 8, alignItems: "center", padding: "8px 10px", marginBottom: 6,
+                background: "var(--bg-paper)", borderRadius: 8, cursor: "grab", fontSize: 13,
+                touchAction: "pan-y", userSelect: "none",
+              }}>
+              <span aria-hidden="true">{ICON[e.type]}</span>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {label}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
